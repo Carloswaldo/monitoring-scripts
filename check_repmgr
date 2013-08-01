@@ -36,14 +36,18 @@ def arg_to_timedelta(arg_string):
 
 def main(argv):
 	parser = argparse.ArgumentParser(description="Checks time lag in a Postgres replication cluster using repmgr")
-	parser.add_argument('-H','--host', help="hostname to connect to", default = None)
-	parser.add_argument('-n','--node', help="number of the node")
-	parser.add_argument('-w','--warning', help="warning limit", default = '0 s')
-	parser.add_argument('-c','--critical', help="critical limit", default = '0 s')
+	parser.add_argument('-H','--host', help="Hostname to connect to", default = None)
+	parser.add_argument('-p','--port', help="Host port", default = None)
+	parser.add_argument('-db','--dbname', help="Name of the database", default = None)
+	parser.add_argument('-u','--dbuser', help="Database user", default = "postgres")
+	parser.add_argument('-P','--dbpass', help="Database user password", default = None)
+	parser.add_argument('-n','--node', help="Number of the node")
+	parser.add_argument('-w','--warning', help="Warning limit (supported units: s[econds], m[inutes], h[ours], d[ays] and w[eeks]. Seconds assumed if no unit is specified)", default = '0 s')
+	parser.add_argument('-c','--critical', help="Critical limit (supported units: s[econds], m[inutes], h[ours], d[ays] and w[eeks]. Seconds assumed if no unit is specified)", default = '0 s')
 	args = parser.parse_args()
 
 	try:
-		conn = psycopg2.connect(host=args.host, dbname="postgres", user="postgres")
+		conn = psycopg2.connect(host=args.host, port=args.port, database=args.dbname, user=args.dbuser, password=args.dbpass)
 		cur = conn.cursor()
 		cur.execute("SELECT time_lag FROM repmgr_test.repl_status WHERE standby_node = %s", [args.node])
 		r = cur.fetchone()
