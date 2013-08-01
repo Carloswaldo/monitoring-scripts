@@ -5,14 +5,21 @@ import psycopg2
 from datetime import timedelta
 import re
 
+def get_seconds(td):
+	return str((td.microseconds + (td.seconds + td.days * 24 * 3600) * 1e6) / 1e6)
+
 def arg_to_timedelta(arg_string):
 	regex = '^\s*(\d+(?:\.\d+)?)\s*(\w*)\s*$'
 	m = re.search(regex, arg_string)
-	value = int(m.group(1))
-	if m.group(2) == '': 
-		unit = 's'
-	else:
-		unit = m.group(2)[0]
+	
+	try:
+		value = int(m.group(1))
+		if m.group(2) == '': 
+			unit = 's'
+		else:
+			unit = m.group(2)[0]
+	except:
+		unit = None
 
 	if unit == 's':
 		return timedelta(seconds=value)
@@ -23,38 +30,44 @@ def arg_to_timedelta(arg_string):
 	elif unit == 'd':
 		return timedelta(days=value)
 	elif unit == 'w':
-		return timedelta(weeks=m.value)
+		return timedelta(weeks=value)
 	else:
-		print 'REPMGR_LAG UNKNOWN: unrecognized time unit'
-		sys.exit(3)
+		raise Exception("unrecognized time unit")
 
 def main(argv):
 	parser = argparse.ArgumentParser(description="Checks time lag in a Postgres replication cluster using repmgr")
-	parser.add_argument('-H','--host', help="hostname to connect to", default = 'localhost')
+	parser.add_argument('-H','--host', help="hostname to connect to", default = None)
 	parser.add_argument('-n','--node', help="number of the node")
 	parser.add_argument('-w','--warning', help="warning limit", default = '0 s')
 	parser.add_argument('-c','--critical', help="critical limit", default = '0 s')
 	args = parser.parse_args()
 
-	conn = psycopg2.connect("host=" + args.host + " dbname=postgres user=postgres")
-	cur = conn.cursor()
-	cur.execute("SELECT time_lag FROM repmgr_test.repl_status WHERE standby_node = %s", [args.node])
-	r = cur.fetchone()
-	#print r[0]
-	cur.close()
-	conn.close()
+	try:
+		conn = psycopg2.connect(host=args.host, dbname="postgres", user="postgres")
+		cur = conn.cursor()
+		cur.execute("SELECT time_lag FROM repmgr_test.repl_status WHERE standby_node = %s", [args.node])
+		r = cur.fetchone()
+	
+		cur.close()
+		conn.close()
 
-	warning = arg_to_timedelta(args.warning)
-	critical = arg_to_timedelta(args.critical)
-
-	if r[0] > critical:
-		print 'REPMGR_LAG CRITICAL: time_lag=' + str(r[0])
+		warning = arg_to_timedelta(args.warning)
+		critical = arg_to_timedelta(args.critical)
+		value = r[0]
+		perfdata =  '|time_lag=' + get_seconds(value) + 's;' + get_seconds(warning) + ';' + get_seconds(critical)
+	
+	except Exception as ex:
+		print 'REPMGR_LAG UNKNOWN: error: ' + str(ex)
+                sys.exit(3)
+	
+	if value > critical:
+		print 'REPMGR_LAG CRITICAL: time_lag=' + str(value) + perfdata
 		sys.exit(2)
-	elif r[0] > warning:
-		print 'REPMGR_LAG WARNING: time_lag=' + str(r[0])
+	elif value > warning:
+		print 'REPMGR_LAG WARNING: time_lag=' + str(value) + perfdata
 		sys.exit(1)
 	else:
-		print 'REPMGR_LAG OK: time_lag=' + str(r[0])
+		print 'REPMGR_LAG OK: time_lag=' + str(value) + perfdata
 		sys.exit(0)
 
 if __name__=='__main__':
