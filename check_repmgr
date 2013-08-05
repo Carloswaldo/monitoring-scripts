@@ -6,8 +6,8 @@ from datetime import timedelta
 import re
 
 def get_seconds(td):
-	#Get total seconds of a timedelta and returns it as a string
-	return str((td.microseconds + (td.seconds + td.days * 24 * 3600) * 1e6) / 1e6)
+	#Get total seconds of a timedelta
+	return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 1e6) / 1e6
 
 def arg_to_timedelta(arg_string):
 	#Get the value and unit from user input using regex
@@ -64,19 +64,20 @@ def main(argv):
 		#Database connection
 		conn = psycopg2.connect(host=args.host, port=args.port, database=args.dbname, user=args.dbuser, password=args.dbpass)
 		cur = conn.cursor()
-		cur.execute("SELECT time_lag FROM repmgr_" + str(args.cluster) + ".repl_status WHERE standby_node = %s", [args.node])
+		cur.execute("SET search_path TO %s", ['repmgr_' + str(args.cluster)])
+		cur.execute("SELECT time_lag FROM repl_status WHERE standby_node = %s", [args.node])
 		r = cur.fetchone()
 	
 		cur.close()
 		conn.close()
 
 		#Convert warning and critical user input into timedelta
-		warning = arg_to_timedelta(args.warning)
-		critical = arg_to_timedelta(args.critical)
-		value = r[0]
+		warning = get_seconds(arg_to_timedelta(args.warning))
+		critical = get_seconds(arg_to_timedelta(args.critical))
+		value = get_seconds(r[0])
 
 		#Preparing the performance data
-		perfdata =  '|time_lag=' + get_seconds(value) + 's;' + get_seconds(warning) + ';' + get_seconds(critical)
+		perfdata =  's|time_lag=' + str(value) + 's;' + str(warning) + ';' + str(critical)
 	
 	except Exception as ex:
 		print 'REPMGR_LAG UNKNOWN: error: ' + str(ex)
