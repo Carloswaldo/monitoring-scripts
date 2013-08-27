@@ -43,7 +43,7 @@ def main(argv):
 	parser = argparse.ArgumentParser(description="Checks time lag in a Postgres replication cluster using repmgr")
 	parser.add_argument('-H','--host', help="Hostname to connect to", default = None)
 	parser.add_argument('-p','--port', help="Host port", default = None)
-	parser.add_argument('-db','--dbname', help="Name of the database", default = None)
+	parser.add_argument('-db','--dbname', help="Name of the database", default = None, required=True)
 	parser.add_argument('-u','--dbuser', help="Database user", default = None)
 	parser.add_argument('-P','--dbpass', help="Database user password", default = None)
 	parser.add_argument('-C','--cluster', help="Name of the cluster", required=True)
