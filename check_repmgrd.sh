@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PID=`pidof repmgrd`
+PID='pidof repmgrd'
 if test $? -ne 0; then
         echo "CHECK_REPMGRD CRITICAL: pid not found"
         exit 2
