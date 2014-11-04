@@ -24,7 +24,7 @@ def main(argv):
 		'message': args.message,
 		'title': 'Icinga Alert on host ' + args.host + ' - ' + args.ntype,
 		'priority': args.priority
-    }
+	}
 
 	#Sending the request
 	data = urllib.urlencode(parameters)
